@@ -1,3 +1,5 @@
+import random
+
 import pandas as pd
 import numpy as np
 from numpy import dot
@@ -5,7 +7,17 @@ from numpy.linalg import norm
 
 #나는 리스트로 파라미터를 넣기 때문에
 #넘파이로 변환이 필요
+def euclidean_distance(A, B):
+    A = np.array(A)
+    B = np.array(B)
+    return np.sqrt(np.sum((A - B) ** 2))
+
 def cos_sim(A, B):
+    if A == [0, 0, 0]:
+        A = [1,1,1]
+    if B == [0, 0, 0]:
+        B = [1,1,1]
+
     A = np.array(A)
     B = np.array(B)
     return dot(A, B)/(norm(A)*norm(B))
@@ -49,7 +61,7 @@ class ClothesRecommend:
         #dataset에서 데이터 넣어주기
         self.getData()
 
-    #문자열 rgb 전처리 -> 튜플
+    #문자열 rgb 전처리 -> 리스트
     def preprocessorTuple(self, rgb):
         temp = rgb
         temp = temp[1: len(temp) - 1].split(',')
@@ -70,7 +82,7 @@ class ClothesRecommend:
     #데이터 입력
     def getData(self):
         #csv 파일 가져오고 조건에 만족하는 데이터들만 가져오기
-        csv = pd.read_csv('test.csv')
+        csv = pd.read_csv('dataset.csv')
         condtion = (csv['sex'] == '공용') | (csv['sex'] == self.sex)
         filter_sex = csv[condtion]
         condtion = (filter_sex['season1'].str.contains(self.season))
@@ -80,22 +92,41 @@ class ClothesRecommend:
         condtion = (filter_season['type'] == 'pants')
         filter_pants = filter_season[condtion]
 
-        #여기서 일부로 데이터에 제한을 두려고 합니다.
-        #원래는 데이터 베이스에서 n개의 상의 옷, 하의 옷을 입력을 받아야 함.
-        #나중에 수정 요망.
-        limit = 5
-        count = 0
-        for i in filter_top.iloc:
-            if limit == count:
-                break;
+
+        colorList = ['black', 'white', 'gray', 'blue', 'ivory', 'lightGray', 'green', 'darkGray', 'skyBlue', 'brown', 'khaki', 'yellow',
+                     'red', 'orange', 'purple', 'mint', 'pink', 'sand', 'darkGreen', 'oliveGreen', 'lavender', 'burgundy', 'lightGreen',
+                     'lightYellow', 'lightPink', 'camel', 'deepRed', 'khakiBeige', 'demin']
+
+        for color in colorList:
+            condtion = (filter_top['color'] == color)
+            filter_color = filter_top[condtion]
+            index = random.randrange(0, len(list(filter_color.iloc)))
+            i = filter_color.iloc[index]
             self.topList.append(Clothes(i[0], i[1], i[2], i[3], i[4], self.preprocessorTuple(i[6]), i[7]))
-            count += 1
-        count = 0
-        for i in filter_pants.iloc:
-            if limit == count:
-                break;
+        for color in colorList:
+            condtion = (filter_pants['color'] == color)
+            filter_color = filter_pants[condtion]
+            index = random.randrange(0, len(list(filter_color.iloc)))
+            i = filter_color.iloc[index]
             self.bottomList.append(Clothes(i[0], i[1], i[2], i[3], i[4], self.preprocessorTuple(i[6]), i[7]))
-            count += 1
+
+        # 여기서 일부로 데이터에 제한을 두려고 합니다.
+        # 원래는 데이터 베이스에서 n개의 상의 옷, 하의 옷을 입력을 받아야 함.
+        # 나중에 수정 요망.
+        # limit = 5
+        # count = 0
+
+        # for i in filter_top.iloc:
+        #     if limit == count:
+        #         break;
+        #     self.topList.append(Clothes(i[0], i[1], i[2], i[3], i[4], self.preprocessorTuple(i[6]), i[7]))
+        #     count += 1
+        # count = 0
+        # for i in filter_pants.iloc:
+        #     if limit == count:
+        #         break;
+        #     self.bottomList.append(Clothes(i[0], i[1], i[2], i[3], i[4], self.preprocessorTuple(i[6]), i[7]))
+        #     count += 1
 
     def greedy(self):
         #1. 각 상의 옷이 하의 옷에 대한 선호도를 입력
@@ -156,7 +187,7 @@ class ClothesRecommend:
         for i in self.topList:
             tempList = []
             for j in i.preferenceDict:
-                if j[1] > 0.8:
+                if j[1] > 0.9999:
                     tempList.append(j[0])
             graph.append(tempList)
 
@@ -187,7 +218,7 @@ class ClothesRecommend:
 
 if __name__ == '__main__':
     print('===============그리드 사용===============')
-    obj1 = ClothesRecommend('남자', '겨울')
+    obj1 = ClothesRecommend('여자', '여름')
     obj1.greedy()
     print('\n===============이분 매칭 사용 사용===============')
     obj2 = ClothesRecommend('남자', '겨울')
