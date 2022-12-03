@@ -34,6 +34,7 @@ class Clothes:
         self.rgb = rgb
         self.url = url
         self.preferenceDict = {}
+        self.selected = 0
 
     #출력을 위해
     def __str__(self):
@@ -49,6 +50,16 @@ class Clothes:
                 pickList.append(i[0])
                 matchList.append((self.name, i[0]))
                 break
+    def bestPick(self, groupList):
+        maxNum = -1
+        maxIndex = 0
+        for i in groupList:
+            for j in self.preferenceDict:
+                if j[0] == i:
+                    if maxNum < j[1]:
+                        maxIndex = i
+                        maxNum = j[1]
+        return maxIndex
 
 #옷 추천 클래스
 class ClothesRecommend:
@@ -159,18 +170,18 @@ class ClothesRecommend:
             count += 1
 
     #이분 매칭 서브 메소드
-    def SubBipartiteMatching(self, n, graphList, selectList, visitList):
+    def subBipartiteMatching(self, n, graphList, selectList, visitList):
         if visitList[n]:
             return False
         visitList[n] = True
 
         for num in graphList[n]:
-            if selectList[num] == -1 or self.SubBipartiteMatching(selectList[num], graphList, selectList, visitList):
+            if selectList[num] == -1 or self.subBipartiteMatching(selectList[num], graphList, selectList, visitList):
                 selectList[num] = n
                 return True
         return False
     #이분 매칭, DFS 사용
-    def BipartiteMatching(self):
+    def bipartiteMatching(self):
         # 1. 선호도를 기준으로 원하는 상의 옷이 원하는 하의 옷을 선택 (나는 선호도 기준을 0.8로 잡음)
         # 2. 이분매칭
 
@@ -198,7 +209,7 @@ class ClothesRecommend:
         selected = [-1] * (len(self.bottomList) + 1)
         for i in range(len(self.topList)):
             visited = [False] * (len(self.topList))
-            self.SubBipartiteMatching(i, graph, selected, visited)
+            self.subBipartiteMatching(i, graph, selected, visited)
         print(selected)
     
         #출력
@@ -214,6 +225,65 @@ class ClothesRecommend:
             print('하의 옷 url:', bottom.url)
             print()
             count += 1
+    def galeShapley(self):
+        #1. 각 상의, 하의가 반대되는 집단의 선호들 구한다(하나는 코사인, 하나는 유클리드)
+        #2. 게일 세플리 알고리즘 사용
+
+        # 1. 각 상의, 하의가 반대되는 집단의 선호들 구한다(하나는 코사인, 하나는 유클리드)
+        for top in self.topList:
+            for j in range(len(self.bottomList)):
+                top.preferenceDict[j] = cos_sim(top.rgb, self.bottomList[j].rgb)
+            print('{}: {}'.format(top.name, top.preferenceDict))
+            top.sort()
+        print()
+        for bottom in self.bottomList:
+            for j in range(len(self.topList)):
+                bottom.preferenceDict[j] = euclidean_distance(bottom.rgb, self.topList[j].rgb)
+            print('{}: {}'.format(bottom.name, bottom.preferenceDict))
+            bottom.sort()
+        print()
+
+        # 2. 게일 셰플리 알고리즘 사용
+        bottomRequestDict = {}
+
+        for i in range(len(self.bottomList)):
+            bottomRequestDict[i] = []
+
+
+        while True:
+            # 2-1 일차원적으로 상의가 하의를 선택 함
+            for i in range(len(self.topList)):
+                bottomRequestDict[self.topList[i].preferenceDict[self.topList[i].selected][0]].append(i)
+
+            # 2-2 하의가 가장 마음에 드는 상의을 선택
+            for key in bottomRequestDict:
+                if bottomRequestDict[key] != [] or len(bottomRequestDict[key]) != 0:
+                    best = self.bottomList[key].bestPick(bottomRequestDict[key])
+                    for i in bottomRequestDict[key]:
+                        if i != best:
+                            self.topList[i].selected += 1
+                    bottomRequestDict[key].clear()
+                    bottomRequestDict[key].append(best)
+
+            count = 0
+            for key in bottomRequestDict:
+                count += len(bottomRequestDict[key])
+
+            if count == len(bottomRequestDict):
+                break
+        print(bottomRequestDict)
+
+        count = 1
+        for key, value in bottomRequestDict.items():
+            top = self.topList[value[0]]
+            bottom = self.bottomList[key]
+            print('{}번째 추천: {}, {}'.format(count, top.name, bottom.name))
+            print('상의 옷 url:', top.url)
+            print('하의 옷 url:', bottom.url)
+            print()
+            count += 1
+
+
 
 
 if __name__ == '__main__':
@@ -222,4 +292,7 @@ if __name__ == '__main__':
     obj1.greedy()
     print('\n===============이분 매칭 사용 사용===============')
     obj2 = ClothesRecommend('남자', '겨울')
-    obj2.BipartiteMatching()
+    obj2.bipartiteMatching()
+    print('\n===============게일 셰플리 사용 사용===============')
+    obj3 = ClothesRecommend('남자', '여름')
+    obj3.galeShapley()
