@@ -5,12 +5,12 @@ import numpy as np
 from numpy import dot
 from numpy.linalg import norm
 
-#나는 리스트로 파라미터를 넣기 때문에
-#넘파이로 변환이 필요
-def euclidean_distance(A, B):
-    A = np.array(A)
-    B = np.array(B)
-    return np.sqrt(np.sum((A - B) ** 2))
+# 보색 구하기
+def complementary_color(clothes):
+    if clothes.rgb[0] == clothes.rgb[1] == clothes.rgb[2]:
+        max_rgb = 255
+    else: max_rgb = max(clothes.rgb)
+    return (max_rgb-clothes.rgb[0], max_rgb-clothes.rgb[1], max_rgb-clothes.rgb[2])
 
 def cos_sim(A, B):
     if A == [0, 0, 0]:
@@ -226,57 +226,73 @@ class ClothesRecommend:
             print()
             count += 1
     def galeShapley(self):
-        #1. 각 상의, 하의가 반대되는 집단의 선호들 구한다(하나는 코사인, 하나는 유클리드)
-        #2. 게일 세플리 알고리즘 사용
-
-        # 1. 각 상의, 하의가 반대되는 집단의 선호들 구한다(하나는 코사인, 하나는 유클리드)
+        # 1. 상의 옷에 대한 하의 옷의 선호도 순위를 매김
         for top in self.topList:
             for j in range(len(self.bottomList)):
-                top.preferenceDict[j] = cos_sim(top.rgb, self.bottomList[j].rgb)
-            print('{}: {}'.format(top.name, top.preferenceDict))
+                top.preferenceDict[j] = cos_sim(self.bottomList[j].rgb, complementary_color(top))
+            print('{}: {}'.format(top.name, top.preferenceDict.values()))
             top.sort()
         print()
+
+        topPreferance = []
+        for i in self.topList:
+            tempList = []
+            for j in i.preferenceDict:
+                tempList.append(j[0])
+            topPreferance.append(tempList)
+
+        # 2. 하의 옷에 대한 상의 옷의 선호도 순위를 매김
         for bottom in self.bottomList:
             for j in range(len(self.topList)):
-                bottom.preferenceDict[j] = euclidean_distance(bottom.rgb, self.topList[j].rgb)
-            print('{}: {}'.format(bottom.name, bottom.preferenceDict))
+                bottom.preferenceDict[j] = cos_sim(self.topList[j].rgb, complementary_color(bottom))
+            print('{}: {}'.format(bottom.name, bottom.preferenceDict.values()))
             bottom.sort()
-        print()
 
-        # 2. 게일 셰플리 알고리즘 사용
-        bottomRequestDict = {}
+        bottomPreferance = []
+        for i in self.bottomList:
+            tempList = []
+            for j in i.preferenceDict:
+                tempList.append(j[0])
+            bottomPreferance.append(tempList)
 
-        for i in range(len(self.bottomList)):
-            bottomRequestDict[i] = []
+        print(topPreferance)
+        print(bottomPreferance)
 
+        # 매칭
+        n = len(topPreferance)
+        unmatchedTop = [1] * n
+        matchedBottom = [-1] * n
+        matchIndex = [0] * n
 
-        while True:
-            # 2-1 일차원적으로 상의가 하의를 선택 함
-            for i in range(len(self.topList)):
-                bottomRequestDict[self.topList[i].preferenceDict[self.topList[i].selected][0]].append(i)
+        while sum(unmatchedTop) != 0:
+            top = unmatchedTop.index(1)
+            unmatchedTop[top] = 0
+            bottom = topPreferance[top][matchIndex[top]]
+            pref = bottomPreferance[bottom]
+            matchIndex[top] += 1
 
-            # 2-2 하의가 가장 마음에 드는 상의을 선택
-            for key in bottomRequestDict:
-                if bottomRequestDict[key] != [] or len(bottomRequestDict[key]) != 0:
-                    best = self.bottomList[key].bestPick(bottomRequestDict[key])
-                    for i in bottomRequestDict[key]:
-                        if i != best:
-                            self.topList[i].selected += 1
-                    bottomRequestDict[key].clear()
-                    bottomRequestDict[key].append(best)
+            # 선택한 하의가 아직 매치되지 않은 경우
+            if matchedBottom[bottom] == -1:
+                matchedBottom[bottom] = top
+            # 선택한 하의가 매치되었지만 새로운 상의의 선호도가 더 높은 경우
+            elif pref.index(top) < pref.index(matchedBottom[bottom]):
+                unmatchedTop[matchedBottom[bottom]] = 1
+                matchedBottom[bottom] = top
+            # 매치에 실패한 경우
+            else:
+                unmatchedTop[top] = 1
 
-            count = 0
-            for key in bottomRequestDict:
-                count += len(bottomRequestDict[key])
+        matchList = []
+        for i in range(n):
+            matchList.append((matchedBottom[i], i))
 
-            if count == len(bottomRequestDict):
-                break
-        print(bottomRequestDict)
+        print(matchList)
 
+        # 출력
         count = 1
-        for key, value in bottomRequestDict.items():
-            top = self.topList[value[0]]
-            bottom = self.bottomList[key]
+        for i in matchList:
+            top = self.topList[i[0]]
+            bottom = self.bottomList[i[1]]
             print('{}번째 추천: {}, {}'.format(count, top.name, bottom.name))
             print('상의 옷 url:', top.url)
             print('하의 옷 url:', bottom.url)
