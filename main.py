@@ -13,9 +13,9 @@ def complementary_color(clothes):
     return (max_rgb-clothes.rgb[0], max_rgb-clothes.rgb[1], max_rgb-clothes.rgb[2])
 
 def cos_sim(A, B):
-    if A == [0, 0, 0]:
+    if A == [0, 0, 0] or A == (0, 0, 0):
         A = [1,1,1]
-    if B == [0, 0, 0]:
+    if B == [0, 0, 0] or B == (0, 0, 0):
         B = [1,1,1]
 
     A = np.array(A)
@@ -124,9 +124,9 @@ class ClothesRecommend:
         # 여기서 일부로 데이터에 제한을 두려고 합니다.
         # 원래는 데이터 베이스에서 n개의 상의 옷, 하의 옷을 입력을 받아야 함.
         # 나중에 수정 요망.
-        # limit = 5
+        # limit = 10
         # count = 0
-
+        #
         # for i in filter_top.iloc:
         #     if limit == count:
         #         break;
@@ -225,6 +225,7 @@ class ClothesRecommend:
             print('하의 옷 url:', bottom.url)
             print()
             count += 1
+
     def galeShapley(self):
         # 1. 상의 옷에 대한 하의 옷의 선호도 순위를 매김
         for top in self.topList:
